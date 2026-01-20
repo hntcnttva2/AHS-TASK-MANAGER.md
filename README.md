@@ -448,7 +448,7 @@ Tính năng **Task Manager** (Quản lý công việc) được tích hợp vào
    - Gọi `createTaskByTypeAndAction()` khi cần tạo task
    - Gọi `completeTaskByRelatedEntity()` khi hoàn thành hành động
 
-## 7. Permissions và Security
+## 7. Permissions
 
 ### 7.1. Permissions
 
