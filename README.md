@@ -1,424 +1,470 @@
-# Task Manager Module
+# Task Manager Specification - Đặc Tả Tính Năng Quản Lý Công Việc
 
-## 1. Tổng quan
+## 1. Tổng Quan
 
-Module Task Manager cho phép quản lý công việc và nhiệm vụ trong hệ thống HRM. Module này hỗ trợ:
-- Tạo và quản lý tasks
-- Phân công tasks cho nhân viên
-- Theo dõi tiến độ và trạng thái tasks
-- Quản lý projects và nhóm tasks
-- Comment và attachment trên tasks
-- Thông báo về các sự kiện liên quan đến tasks
+Tính năng **Task Manager** (Quản lý công việc) được tích hợp vào hệ thống quản lý nhân sự để tự động hóa việc tạo và quản lý các công việc cần thực hiện. Hệ thống sẽ tự động tạo task dựa trên các hành động (action) trong các module khác và tự động đánh dấu hoàn thành khi hành động tương ứng được thực hiện.
 
-## 2. Các tính năng chính
+## 2. Mục Tiêu
 
-### 2.1. Quản lý Projects
-- Tạo, sửa, xóa projects
-- Gán project manager và team members
-- Thiết lập thời gian bắt đầu/kết thúc dự án
-- Quản lý trạng thái dự án (Planning, In Progress, On Hold, Completed, Cancelled)
-- Liên kết project với department
+### 2.1. Mục Tiêu Chính
 
-### 2.2. Quản lý Tasks
-- Tạo tasks với thông tin chi tiết (title, description, priority, due date)
-- Phân công tasks cho assignees
-- Thiết lập task dependencies
-- Quản lý trạng thái task (Todo, In Progress, In Review, Done, Cancelled)
-- Gán labels/tags cho tasks
-- Ưu tiên tasks (Low, Medium, High, Urgent)
-- Ước tính thời gian hoàn thành
+- Mỗi người dùng có thể xem danh sách công việc cần làm trong ngày hôm nay
+- Tự động sinh task mới khi có sự kiện xảy ra trong hệ thống (ví dụ: nhân viên tạo leave request)
+- Tự động đánh dấu task là hoàn thành khi hành động tương ứng được thực hiện (ví dụ: quản lý approve leave request)
+- Tạo task theo workflow template với các bước tuần tự
+- Quản lý dependencies giữa các task: task sau chỉ được thực hiện khi task trước hoàn thành
+- Tự động tạo task tiếp theo khi task hiện tại hoàn thành
+- Task Template: mẫu định nghĩa sẵn cho một task đơn lẻ (title, description, type, action, role được gán, SLA/due date offset, priority) để tái sử dụng
 
-### 2.3. Theo dõi tiến độ
-- Cập nhật tiến độ task
-- Log thời gian làm việc
-- Theo dõi thời gian thực tế vs ước tính
-- Báo cáo tiến độ theo project/department/user
+## 3. Database
 
-### 2.4. Comments và Attachments
-- Thêm comments vào tasks
-- Upload attachments (files, images)
-- Mention users trong comments
-- Lịch sử thay đổi
+### 3.1. Enum Types
 
-### 2.5. Notifications
-- Thông báo khi được assign task mới
-- Thông báo khi task được cập nhật
-- Thông báo khi task sắp đến deadline
-- Thông báo khi có comment mới
-- Thông báo khi task được hoàn thành
+#### 3.1.1. task_status_enum
 
-### 2.6. Báo cáo và Dashboard
-- Dashboard tổng quan tasks của user
-- Báo cáo tasks theo project/department
-- Thống kê hiệu suất làm việc
-- Báo cáo tasks quá hạn
+**Các giá trị:**
 
-## 3. Database Schema
+- `PENDING`: Chờ xử lý (mặc định)
+- `IN_PROGRESS`: Đang thực hiện
+- `COMPLETED`: Đã hoàn thành
+- `CANCELLED`: Đã hủy
 
-### 3.1. Project Entity
-| Trường                   | Mô tả                                       |
-| ------------------------ | ------------------------------------------- |
-| `id`                     | Định danh dự án                             |
-| `name`                   | Tên dự án                                   |
-| `code`                   | Mã dự án                                    |
-| `description`            | Mô tả dự án                                 |
-| `department`             | Phòng ban phụ trách                         |
-| `projectManager`         | Người quản lý dự án                         |
-| `startDate`, `endDate`   | Thời gian thực hiện                         |
-| `status`                 | Trạng thái dự án (Planning, In Progress, …) |
-| `isActive`               | Đang hoạt động hay không                    |
-| `members`                | Danh sách thành viên                        |
-| `tasks`                  | Danh sách công việc                         |
-| `createdAt`, `updatedAt` | Thời gian tạo và cập nhật                   |
+#### 3.1.2. task_type_enum
 
+**Các giá trị:**
 
-### 3.2. Task Entity
-| Trường                                | Mô tả                                                      |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `id`                                  | Định danh công việc                                        |
-| `title`                               | Tên công việc                                              |
-| `description`                         | Mô tả chi tiết                                             |
-| `project`                             | Dự án liên quan                                            |
-| `department`                          | Phòng ban phụ trách                                        |
-| `createdBy`                           | Người tạo                                                  |
-| `assignedTo`                          | Người chịu trách nhiệm chính                               |
-| `assignees`                           | Danh sách người thực hiện                                  |
-| `status`                              | Trạng thái (Todo, In Progress, In Review, Done, Cancelled) |
-| `priority`                            | Mức độ ưu tiên                                             |
-| `startDate`, `dueDate`, `completedAt` | Mốc thời gian                                              |
-| `estimatedHours`, `actualHours`       | Thời gian ước tính & thực tế                               |
-| `progress`                            | Tiến độ                                                    |
-| `labels`                              | Tags phân loại                                             |
-| `parentTask`                          | Task cha                                                   |
-| `subtasks`                            | Các task con                                               |
-| `dependencies`                        | Quan hệ phụ thuộc                                          |
-| `comments`                            | Trao đổi công việc                                         |
-| `attachments`                         | Tài liệu đính kèm                                          |
-| `timeLogs`                            | Nhật ký thời gian                                          |
-| `createdAt`, `updatedAt`              | Thời gian tạo và cập nhật                                  |
+- `LEAVE_APPROVAL`: Phê duyệt đơn nghỉ phép
+- _(Có thể mở rộng thêm các loại khác trong tương lai)_
+#### 3.1.3. task_action_enum
 
-### 3.3. Task Dependency Entity
+**Các giá trị:**
 
-| Thành phần               | Mô tả                                                        |
-| ------------------------ | ------------------------------------------------------------ |
-| `id`                     | Định danh quan hệ phụ thuộc                                  |
-| `taskId`                 | Task đang xét                                                |
-| `dependsOnTaskId`        | Task mà `taskId` phụ thuộc vào                               |
-| `type`                   | Loại quan hệ phụ thuộc: `BLOCKS`, `BLOCKED_BY`, `RELATES_TO` |
-| `createdAt`, `updatedAt` | Thời gian tạo và cập nhật                                    |
+- `APPROVE_LEAVE_REQUEST`: Phê duyệt đơn nghỉ phép
+- `REJECT_LEAVE_REQUEST`: Từ chối đơn nghỉ phép
+- _(Có thể mở rộng thêm các action khác trong tương lai)_
+### 3.2. Bảng task
+
+#### 3.2.1. Cấu Trúc Bảng
+
+| Tên Cột               | Kiểu Dữ Liệu     | Nullable | Mặc Định             | Mô Tả                                         |
+| --------------------- | ---------------- | -------- | -------------------- | --------------------------------------------- |
+| `id`                  | SERIAL           | NO       | AUTO_INCREMENT       | Primary key, tự động tăng                     |
+| `title`               | varchar(255)     | NO       | -                    | Tiêu đề của task                              |
+| `description`         | text             | YES      | NULL                 | Mô tả chi tiết của task                       |
+| `assigned_to_id`      | int              | NO       | -                    | ID người được giao task (FK → user.id)        |
+| `status`              | task_status_enum | NO       | 'PENDING'            | Trạng thái của task                           |
+| `type`                | task_type_enum   | NO       | -                    | Loại task                                     |
+| `action`              | task_action_enum | NO       | -                    | Hành động cần thực hiện                       |
+| `related_entity_type` | varchar(100)     | YES      | NULL                 | Loại entity liên quan (ví dụ: "LeaveRequest") |
+| `related_entity_id`   | int              | YES      | NULL                 | ID của entity liên quan                       |
+| `workflow_instance_id` | int          | YES      | NULL     | FK → workflow_instance.id                       |
+| `workflow_step_order`  | int          | YES      | NULL     | Thứ tự bước trong workflow                      |
+| `depends_on_task_id`   | int          | YES      | NULL     | FK → task.id (task phụ thuộc)                   |
+| `can_start`            | boolean      | NO       | true     | Task có thể bắt đầu chưa (phụ thuộc task trước) |
+| `due_date`            | date             | YES      | NULL                 | Ngày hết hạn của task                         |
+| `completed_at`        | date             | YES      | NULL                 | Ngày hoàn thành task                          |
+| `created_at`          | timestamp(6)     | NO       | CURRENT_TIMESTAMP(6) | Ngày tạo task                                 |
+| `updated_at`          | timestamp(6)     | NO       | CURRENT_TIMESTAMP(6) | Ngày cập nhật task                            |
+
+### 3.3. Bảng Workflow Template
+
+#### 3.3.1. Cấu Trúc Bảng workflow_template
+
+| Tên Cột        | Kiểu Dữ Liệu | Nullable | Mặc Định | Mô Tả                          |
+| -------------- | ------------ | -------- | -------- | ------------------------------ |
+| id             | SERIAL       | NO       | AUTO     | Primary key                    |
+| name           | varchar(255) | NO       | -        | Tên workflow template          |
+| description    | text         | YES      | NULL     | Mô tả workflow                 |
+| created_by_id  | int          | NO       | -        | FK → user.id (người tạo)       |
+| department_id  | int          | YES      | NULL     | Phòng ban sở hữu workflow      |
+| is_active   | boolean      | NO       | true     | Trạng thái active của template |
+| created_at     | timestamp(6) | NO       | NOW()    | Ngày tạo                       |
+| updated_at     | timestamp(6) | NO       | NOW()    | Ngày cập nhật                  |
 
 
-### 3.4. Task Comment Entity
-| Thành phần               | Mô tả                                         |
-| ------------------------ | --------------------------------------------- |
-| `id`                     | Định danh của comment                         |
-| `taskId`                 | Task mà comment thuộc về                      |
-| `userId`                 | Người tạo comment                             |
-| `content`                | Nội dung bình luận                            |
-| `mentionedUserIds`       | Danh sách user được mention trong comment     |
-| `createdAt`, `updatedAt` | Thời gian tạo và cập nhật                     |
+#### 3.3.2. Cấu Trúc Bảng workflow_step
 
+| Tên Cột                | Kiểu Dữ Liệu     | Nullable | Mặc Định | Mô Tả                                             |
+| ---------------------- | ---------------- | -------- | -------- | ------------------------------------------------- |
+| `id`                   | SERIAL           | NO       | AUTO     | Primary key                                       |
+| `workflow_template_id` | int              | NO       | -        | FK → workflow_template.id                         |
+| `step_order`           | int              | NO       | -        | Thứ tự bước trong workflow (1, 2, 3...)           |
+| `step_name`            | varchar(255)     | NO       | -        | Tên bước (ví dụ: "Code", "Review Code")           |
+| `task_template_id`     | int              | YES      | NULL     | FK → task_template.id (nếu dùng task template)    |
+| `task_type`            | task_type_enum   | YES      | NULL     | Loại task (fallback nếu không dùng task template) |
+| `task_action`          | task_action_enum | YES      | NULL     | Action (fallback nếu không dùng task template)    |
+| `assigned_to_role`     | varchar(100)     | YES      | NULL     | Role được gán task                                         |
+| `is_required`          | boolean          | NO       | true     | Bước này có bắt buộc không                        |
+| `can_skip`             | boolean          | NO       | false    | Có thể bỏ qua bước này không                      |
+| `created_at`           | timestamp(6)     | NO       | NOW()    | Ngày tạo                                          |
 
-### 3.5. Task Attachment Entity
+#### 3.3.3. Cấu Trúc Bảng workflow_instance
 
-| Thành phần               | Mô tả                           |
-| ------------------------ | ------------------------------- |
-| `id`                     | Định danh tệp                   |
-| `taskId`                 | Task chứa tệp                   |
-| `uploadedById`           | Người upload                    |
-| `fileName`               | Tên file                        |
-| `fileUrl`                | Đường dẫn lưu trữ               |
-| `fileType`               | Loại file (pdf, image, docx, …) |
-| `fileSize`               | Dung lượng file                 |
-| `createdAt`, `updatedAt` | Thời điểm upload                |
+| Tên Cột                | Kiểu Dữ Liệu | Nullable | Mặc Định | Mô Tả                                    |
+| ---------------------- | ------------ | -------- | -------- | ---------------------------------------- |
+| `id`                   | SERIAL       | NO       | AUTO     | Primary key                              |
+| `workflow_template_id` | int          | NO       | -        | FK → workflow_template.id                |
+| `current_step_order`   | int          | NO       | 1        | Bước hiện tại đang thực hiện             |
+| `status`               | varchar(50)  | NO       | 'ACTIVE' | Trạng thái: ACTIVE, COMPLETED, CANCELLED |
+| `related_entity_type`  | varchar(100) | YES      | NULL     | Loại entity liên quan                    |
+| `related_entity_id`    | int          | YES      | NULL     | ID entity liên quan                      |
+| `created_by_id`        | int          | NO       | -        | FK → user.id (người tạo workflow)        |
+| `created_at`           | timestamp(6) | NO       | NOW()    | Ngày tạo                                 |
+| `updated_at`           | timestamp(6) | NO       | NOW()    | Ngày cập nhật                            |
+| `completed_at`         | timestamp(6) | YES      | NULL     | Ngày hoàn thành workflow                 |
 
+### 3.4. Bảng Task Template
 
-### 3.6. Task Time Log Entity
-| Thành phần    | Mô tả              |
-| ------------- | ------------------ |
-| `id`          | Định danh log      |
-| `taskId`      | Task được ghi nhận |
-| `userId`      | Người thực hiện    |
-| `startTime`   | Thời điểm bắt đầu  |
-| `endTime`     | Thời điểm kết thúc |
-| `hours`       | Số giờ làm việc    |
-| `description` | Ghi chú công việc  |
-| `createdAt`   | Thời điểm ghi nhận |
+| Tên Cột                   | Kiểu Dữ Liệu     | Nullable | Mặc Định | Mô Tả                                                 |
+| ------------------------- | ---------------- | -------- | -------- | ----------------------------------------------------- |
+| `id`                      | SERIAL           | NO       | AUTO     | Primary key                                           |
+| `name`                    | varchar(255)     | NO       | -        | Tên task template                                     |
+| `description`             | text             | YES      | NULL     | Mô tả template                                        |
+| `task_type`               | task_type_enum   | NO       | -        | Loại task                                             |
+| `task_action`             | task_action_enum | NO       | -        | Action                                                |
+| `default_role`            | varchar(100)     | YES      | NULL     | Role mặc định được gán task                           |
+| `default_due_offset_days` | int              | YES      | NULL     | Số ngày cộng thêm để tính due date (tính từ ngày tạo) |
+| `priority`                | varchar(50)      | YES      | NULL     | Ưu tiên (ví dụ: HIGH, MEDIUM, LOW)                    |
+| `is_active`               | boolean          | NO       | true     | Trạng thái active                                     |
+| `created_at`              | timestamp(6)     | NO       | NOW()    | Ngày tạo                                              |
+| `updated_at`              | timestamp(6)     | NO       | NOW()    | Ngày cập nhật                                         |
 
+### 3.5. Quan Hệ với Các Bảng Khác
 
-## 4. Enums
+**User Table**
 
-### 4.1. ProjectStatus Enum
-```typescript
-export enum ProjectStatus {
-  PLANNING = 'PLANNING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  ON_HOLD = 'ON_HOLD',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-}
+- `task.assigned_to_id → user.id` (Many-to-One)
+- `workflow_instance.created_by_id → user.id` (Many-to-One)
+- Một user có thể có nhiều task
+- Một task chỉ thuộc về một user
+
+**Workflow Template**
+
+- `workflow_step.workflow_template_id → workflow_template.id` (Many-to-One)
+- `workflow_instance.workflow_template_id → workflow_template.id` (Many-to-One)
+- Một template có nhiều steps
+- Một template có thể có nhiều instances
+
+**Workflow Instance**
+
+- `task.workflow_instance_id → workflow_instance.id` (Many-to-One)
+- Một workflow instance có nhiều tasks
+- Một task chỉ thuộc về một workflow instance (hoặc không thuộc workflow nào)
+
+**Task Dependencies**
+
+- `task.depends_on_task_id → task.id` (Self-referencing)
+- Task có thể phụ thuộc vào một task khác
+- Khi task phụ thuộc hoàn thành, task hiện tại mới có thể bắt đầu
+
+## 4. Luồng Hoạt Động
+
+### 4.1. Luồng Tạo Task Tự Động
+
+```
+1. Sự kiện xảy ra trong hệ thống
+   ↓
+2. Module tương ứng gọi TaskService.createTaskByTypeAndAction()
+   ↓
+3. TaskService tìm người được gán task (ví dụ: tìm manager)
+   ↓
+4. Tạo task mới với status = PENDING
+   ↓
+5. Task được lưu vào database
 ```
 
-### 4.2. TaskStatus Enum
-```typescript
-export enum TaskStatus {
-  TODO = 'TODO',
-  IN_PROGRESS = 'IN_PROGRESS',
-  IN_REVIEW = 'IN_REVIEW',
-  DONE = 'DONE',
-  CANCELLED = 'CANCELLED',
-}
+### 4.2. Luồng Hoàn Thành Task Tự Động
+
+```
+1. Người dùng thực hiện hành động (ví dụ: approve leave request)
+   ↓
+2. Module tương ứng gọi TaskService.completeTaskByRelatedEntity()
+   ↓
+3. TaskService tìm task liên quan dựa trên relatedEntityType, relatedEntityId, action
+   ↓
+4. Cập nhật task: status = COMPLETED, completedAt = now()
+   ↓
+5. Task được lưu vào database
 ```
 
-### 4.3. TaskPriority Enum
-```typescript
-export enum TaskPriority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  URGENT = 'URGENT',
-}
+### 4.3. Luồng Xem Task Hôm Nay
+
+```
+1. User gọi API GET /tasks/today
+   ↓
+2. TaskService.getTodayTasks(userId)
+   ↓
+3. Lọc task theo:
+   - assignedToId = userId
+   - dueDate = hôm nay
+   - status = PENDING
+   - canStart = true (chỉ lấy task có thể bắt đầu)
+   ↓
+4. Trả về danh sách task
 ```
 
-### 4.4. DependencyType Enum
-```typescript
-export enum DependencyType {
-  BLOCKS = 'BLOCKS',           // Task này chặn task khác
-  BLOCKED_BY = 'BLOCKED_BY',   // Task này bị chặn bởi task khác
-  RELATES_TO = 'RELATES_TO',   // Task này liên quan đến task khác
-}
+### 4.4. Luồng Tạo Task Theo Workflow
+
+```
+1. User tạo workflow instance từ template
+   ↓
+2. WorkflowService.createInstance(templateId, relatedEntity)
+   ↓
+3. Tạo workflow_instance với current_step_order = 1
+   ↓
+4. Tạo task đầu tiên từ step đầu tiên:
+   - depends_on_task_id = NULL (không phụ thuộc)
+   - can_start = true
+   - workflow_instance_id = instance.id
+   - workflow_step_order = 1
+   ↓
+5. Các task tiếp theo được tạo nhưng:
+   - depends_on_task_id = task trước đó
+   - can_start = false (chờ task trước hoàn thành)
+```
+
+### 4.5. Luồng Hoàn Thành Task Trong Workflow
+
+```
+1. User hoàn thành task hiện tại (status = COMPLETED)
+   ↓
+2. TaskService.updateTaskStatus() được gọi
+   ↓
+3. Kiểm tra xem task có thuộc workflow không:
+   - Nếu có: Kiểm tra task phụ thuộc (depends_on_task_id)
+   - Nếu task phụ thuộc đã completed: Set can_start = true cho task hiện tại
+   ↓
+4. Tìm task tiếp theo trong workflow:
+   - workflow_instance_id = task.workflow_instance_id
+   - workflow_step_order = task.workflow_step_order + 1
+   ↓
+5. Nếu có task tiếp theo:
+   - Kiểm tra depends_on_task_id = task vừa completed
+   - Set can_start = true cho task tiếp theo
+   - Cập nhật workflow_instance.current_step_order
+   ↓
+6. Nếu không còn task nào:
+   - Cập nhật workflow_instance.status = COMPLETED
+   - Set workflow_instance.completed_at = now()
 ```
 
 ## 5. API Endpoints
 
-### 5.1. Project Endpoints
+### 5.1. Tạo Task 
 
-#### POST /projects
-Tạo project mới
-- **Body**: `CreateProjectDto`
-- **Permissions**: Admin, Manager
-- **Response**: Project entity
+**Endpoint:** `POST /tasks`
 
-#### GET /projects
-Lấy danh sách projects
-- **Query**: `GetProjectsDto` (filters, pagination)
-- **Permissions**: All authenticated users
-- **Business Logic**:
-  - Employee: Chỉ xem projects mình tham gia
-  - Manager: Xem projects của department mình quản lý
-  - Admin: Xem tất cả projects
+**Request Body:**
 
-#### GET /projects/:id
-Lấy chi tiết project
-- **Permissions**: Xem theo business logic trên
+- `title`: string (required) - Tiêu đề của task
+- `description`: string (optional) - Mô tả chi tiết
+- `assignedToId`: number (required) - ID người được giao task
+- `type`: TaskType (required) - Loại task
+- `action`: TaskAction (required) - Hành động cần thực hiện
+- `relatedEntityType`: string (optional) - Loại entity liên quan
+- `relatedEntityId`: number (optional) - ID entity liên quan
+- `dueDate`: string (optional) - Ngày hết hạn (YYYY-MM-DD)
 
-#### PUT /projects/:id
-Cập nhật project
-- **Body**: `UpdateProjectDto`
-- **Permissions**: Admin, Project Manager của project đó
+**Response:** Task object với status = PENDING
 
-#### DELETE /projects/:id
-Xóa project (soft delete)
-- **Permissions**: Admin
+### 5.2. Lấy Danh Sách Task
 
-#### GET /projects/:id/tasks
-Lấy danh sách tasks của project
-- **Query**: Filters, pagination
-- **Permissions**: Xem theo business logic của project
+**Endpoint:** `GET /tasks`
 
-#### POST /projects/:id/members
-Thêm members vào project
-- **Body**: `{ userIds: number[] }`
-- **Permissions**: Admin, Project Manager
+**Query Parameters:**
 
-#### DELETE /projects/:id/members/:userId
-Xóa member khỏi project
-- **Permissions**: Admin, Project Manager
+- `status` (optional): Lọc theo trạng thái (PENDING, IN_PROGRESS, COMPLETED, CANCELLED)
+- `date` (optional): Lọc theo ngày (YYYY-MM-DD)
+- `all` (optional): true để lấy tất cả, false hoặc không có để lấy hôm nay
 
-### 5.2. Task Endpoints
+**Response:** Mảng các Task objects
 
-#### POST /tasks
-Tạo task mới
-- **Body**: `CreateTaskDto`
-- **Permissions**: Project Member, Project Manager, Admin
-- **Response**: Task entity
+### 5.3. Lấy Task Hôm Nay
 
-#### GET /tasks
-Lấy danh sách tasks
-- **Query**: `GetTasksDto` (filters: status, priority, assignee, project, department, dueDate, pagination)
-- **Permissions**: All authenticated users
-- **Business Logic**:
-  - Employee: Xem tasks được assign cho mình và tasks của projects mình tham gia
-  - Manager: Xem tasks của department mình quản lý
-  - Admin: Xem tất cả tasks
+**Endpoint:** `GET /tasks/today`
 
-#### GET /tasks/my
-Lấy danh sách tasks của user hiện tại
-- **Query**: Filters, pagination
-- **Permissions**: All authenticated users
+**Response:** Mảng các Task objects có dueDate = hôm nay và status = PENDING
 
-#### GET /tasks/:id
-Lấy chi tiết task
-- **Permissions**: Xem theo business logic trên
+### 5.4. Lấy Task Theo ID
 
-#### PUT /tasks/:id
-Cập nhật task
-- **Body**: `UpdateTaskDto`
-- **Permissions**: Task creator, Assigned user, Project Manager, Admin
+**Endpoint:** `GET /tasks/:id`
 
-#### DELETE /tasks/:id
-Xóa task (soft delete)
-- **Permissions**: Task creator, Project Manager, Admin
+**Response:** Task object
 
-#### PUT /tasks/:id/status
-Cập nhật trạng thái task
-- **Body**: `{ status: TaskStatus }`
-- **Permissions**: Task creator, Assigned user, Project Manager, Admin
+### 5.5. Cập Nhật Trạng Thái Task
 
-#### PUT /tasks/:id/assign
-Gán task cho user(s)
-- **Body**: `{ assigneeIds: number[] }`
-- **Permissions**: Task creator, Project Manager, Admin
+**Endpoint:** `PUT /tasks/:id/status`
 
-#### PUT /tasks/:id/progress
-Cập nhật tiến độ task
-- **Body**: `{ progress: number }` (0-100)
-- **Permissions**: Task creator, Assigned user, Project Manager, Admin
+**Request Body:**
 
-#### POST /tasks/:id/subtasks
-Tạo subtask
-- **Body**: `CreateTaskDto`
-- **Permissions**: Task creator, Assigned user, Project Manager, Admin
+- `status`: TaskStatus (required) - Trạng thái mới
 
-#### GET /tasks/:id/dependencies
-Lấy danh sách dependencies của task
-- **Permissions**: Task creator, Assigned user, Project Manager, Admin
+**Response:** Task object đã được cập nhật
 
-#### POST /tasks/:id/dependencies
-Thêm dependency
-- **Body**: `{ dependsOnTaskId: number, type: DependencyType }`
-- **Permissions**: Task creator, Assigned user, Project Manager, Admin
+**Lưu ý:** Nếu status = COMPLETED, hệ thống tự động set completedAt = now()
 
-#### DELETE /tasks/:id/dependencies/:dependencyId
-Xóa dependency
-- **Permissions**: Task creator, Project Manager, Admin
+### 5.6. Xóa Task
 
-### 5.3. Task Comment Endpoints
+**Endpoint:** `DELETE /tasks/:id`
 
-#### POST /tasks/:id/comments
-Thêm comment vào task
-- **Body**: `{ content: string, mentionedUserIds?: number[] }`
-- **Permissions**: Project Member, Project Manager, Admin
+**Response:** Message xác nhận đã xóa
 
-#### GET /tasks/:id/comments
-Lấy danh sách comments của task
-- **Query**: Pagination
-- **Permissions**: Project Member, Project Manager, Admin
+### 5.7. Workflow Template Endpoints
 
-#### PUT /tasks/:taskId/comments/:commentId
-Cập nhật comment
-- **Body**: `{ content: string }`
-- **Permissions**: Comment owner, Admin
+#### 5.7.1. Tạo Workflow Template
 
-#### DELETE /tasks/:taskId/comments/:commentId
-Xóa comment
-- **Permissions**: Comment owner, Task creator, Admin
+**Endpoint:** `POST /workflows/templates`
 
-### 5.4. Task Attachment Endpoints
+**Request Body:**
 
-#### POST /tasks/:id/attachments
-Upload attachment
-- **Body**: Multipart form data (file)
-- **Permissions**: Project Member, Project Manager, Admin
+- `name`: string (required) - Tên workflow template
+- `description`: string (optional) - Mô tả
+- `steps`: array (required) - Danh sách các bước
+  - `stepOrder`: number - Thứ tự bước
+  - `stepName`: string - Tên bước
+  - `taskType`: TaskType - Loại task
+  - `taskAction`: TaskAction - Action
+  - `assignedToRole`: string (optional) - Role được gán
+  - `isRequired`: boolean - Bắt buộc hay không
+  - `canSkip`: boolean - Có thể bỏ qua không
 
-#### GET /tasks/:id/attachments
-Lấy danh sách attachments
-- **Permissions**: Project Member, Project Manager, Admin
+**Response:** WorkflowTemplate object
 
-#### DELETE /tasks/:taskId/attachments/:attachmentId
-Xóa attachment
-- **Permissions**: Attachment owner, Task creator, Admin
+#### 5.7.2. Lấy Danh Sách Workflow Templates
 
-### 5.5. Task Time Log Endpoints
+**Endpoint:** `GET /workflows/templates`
 
-#### POST /tasks/:id/time-logs
-Tạo time log
-- **Body**: `{ startTime: Date, endTime?: Date, hours: number, description?: string }`
-- **Permissions**: Assigned user, Project Manager, Admin
+**Query Parameters:**
 
-#### GET /tasks/:id/time-logs
-Lấy danh sách time logs của task
-- **Permissions**: Project Member, Project Manager, Admin
+- `isActive` (optional): boolean - Lọc theo trạng thái active
 
-#### GET /time-logs/my
-Lấy time logs của user hiện tại
-- **Query**: Date range, pagination
-- **Permissions**: Assigned user, Project Manager, Admin
+**Response:** Mảng các WorkflowTemplate objects
 
-#### PUT /time-logs/:id
-Cập nhật time log
-- **Body**: `UpdateTimeLogDto`
-- **Permissions**: Assigned user, Project Manager, Admin
+#### 5.7.3. Lấy Workflow Template Theo ID
 
-#### DELETE /time-logs/:id
-Xóa time log
-- **Permissions**: Assigned user, Project Manager, Admin
+**Endpoint:** `GET /workflows/templates/:id`
 
-### 5.6. Dashboard & Reports Endpoints
+**Response:** WorkflowTemplate object với danh sách steps
 
-#### GET /tasks/dashboard
-Dashboard tổng quan tasks của user
-- **Permissions**: Project Manager, Admin
+#### 5.7.4. Cập Nhật Workflow Template
 
-#### GET /tasks/reports
-Báo cáo tasks
-- **Query**: `{ projectId?, departmentId?, userId?, startDate?, endDate? }`
-- **Permissions**: Project Manager, Admin
+**Endpoint:** `PUT /workflows/templates/:id`
 
+**Request Body:** Tương tự như tạo template
 
-## 6. Business Logic & Rules
+**Response:** WorkflowTemplate object đã cập nhật
 
-### 6.1. Task Assignment Rules
-- Một task có thể được gán cho nhiều người (assignees)
-- Khi task được gán, gửi notification cho assignees
-- Chỉ người tạo task, Admin, hoặc Manager mới có thể gán task
+#### 5.7.5. Xóa Workflow Template
 
-### 6.2. Task Status Flow
-```
-TODO → IN_PROGRESS → IN_REVIEW → DONE
-  ↓         ↓            ↓
-CANCELLED  CANCELLED   CANCELLED
-```
-- Task có thể bị cancel ở bất kỳ trạng thái nào
-- Khi task chuyển sang DONE, tự động set `completedAt` và `progress = 100`
-- Khi task chuyển sang IN_PROGRESS, tự động set `startDate` nếu chưa có
+**Endpoint:** `DELETE /workflows/templates/:id`
 
-### 6.3. Task Dependencies
-- Task không thể chuyển sang IN_PROGRESS nếu có dependencies chưa hoàn thành (BLOCKED_BY)
-- Khi task được hoàn thành, tự động kiểm tra và unlock các tasks bị block bởi nó
-- Không cho phép tạo circular dependencies
+**Response:** Message xác nhận đã xóa
 
-### 6.4. Time Tracking
-- Time logs được tính vào `actualHours` của task
-- Khi `actualHours` > `estimatedHours`, có thể cảnh báo
-- Time logs có thể được tạo với `endTime` hoặc chỉ `hours`
+### 5.8. Workflow Instance Endpoints
 
-### 6.5. Subtasks
-- Subtask tự động kế thừa project và department từ parent task
-- Khi tất cả subtasks hoàn thành, có thể tự động đánh dấu parent task là DONE
-- Subtask có thể có subtasks riêng 
+#### 5.8.1. Tạo Workflow Instance
 
-### 6.6. Notifications
-- Gửi notification khi:
-  - Task được assign cho user
-  - Task status thay đổi
-  - Task được comment (mention users)
-  - Task sắp đến deadline (1 ngày trước)
-  - Task quá hạn
-  - Task dependency được hoàn thành
+**Endpoint:** `POST /workflows/instances`
 
-### 6.7. Project Rules
-- Project có thể có nhiều members
-- Project Manager có thể quản lý tất cả tasks trong project
-- Khi project status = CANCELLED, tất cả tasks chưa hoàn thành tự động chuyển sang CANCELLED
-- Khi project status = COMPLETED, chỉ cho phép tạo tasks mới nếu có quyền đặc biệt
+**Request Body:**
+
+- `workflowTemplateId`: number (required) - ID của template
+- `relatedEntityType`: string (optional) - Loại entity liên quan
+- `relatedEntityId`: number (optional) - ID entity liên quan
+- `initialData`: object (optional) - Dữ liệu ban đầu cho các task
+
+**Response:** WorkflowInstance object với task đầu tiên đã được tạo
+
+#### 5.8.2. Lấy Danh Sách Workflow Instances
+
+**Endpoint:** `GET /workflows/instances`
+
+**Query Parameters:**
+
+- `status` (optional): string - Lọc theo trạng thái
+- `createdById` (optional): number - Lọc theo người tạo
+- `relatedEntityType` (optional): string - Lọc theo entity type
+- `relatedEntityId` (optional): number - Lọc theo entity ID
+
+**Response:** Mảng các WorkflowInstance objects
+
+#### 5.8.3. Lấy Workflow Instance Theo ID
+
+**Endpoint:** `GET /workflows/instances/:id`
+
+**Response:** WorkflowInstance object với danh sách tasks và trạng thái hiện tại
+
+#### 5.8.4. Hủy Workflow Instance
+
+**Endpoint:** `DELETE /workflows/instances/:id`
+
+**Response:** Message xác nhận đã hủy
+
+**Lưu ý:** Khi hủy workflow instance, tất cả tasks chưa completed sẽ bị cancelled
+
+## 6. Tích Hợp Với Các Module Khác
+
+### 6.1. Tích Hợp với Leave Module
+
+#### 6.1.1. Khi Nhân Viên Tạo Leave Request
+
+**Luồng xử lý:**
+
+1. Nhân viên tạo leave request qua `POST /leaves`
+2. `LeaveService.createRequest()` được gọi
+3. Sau khi tạo leave request thành công:
+   - Tìm manager của nhân viên (hoặc admin nếu không có manager)
+   - Gọi `TaskService.createTaskByTypeAndAction()` với:
+     - `type`: `LEAVE_APPROVAL`
+     - `action`: `APPROVE_LEAVE_REQUEST`
+     - `assignedToId`: ID của manager/admin
+     - `relatedEntityType`: `"LeaveRequest"`
+     - `relatedEntityId`: ID của leave request vừa tạo
+     - `title`: "Phê duyệt đơn nghỉ phép của [Tên nhân viên]"
+     - `description`: Mô tả chi tiết về đơn nghỉ phép
+     - `dueDate`: Ngày bắt đầu nghỉ phép
+
+#### 6.1.2. Khi Quản Lý Approve/Reject Leave Request
+
+**Luồng xử lý:**
+
+1. Quản lý approve/reject leave request qua `PUT /leaves/:id/status`
+2. `LeaveService.updateStatus()` được gọi
+3. Sau khi cập nhật status thành công:
+   - Gọi `TaskService.completeTaskByRelatedEntity()` với:
+     - `relatedEntityType`: `"LeaveRequest"`
+     - `relatedEntityId`: ID của leave request
+     - `action`: `APPROVE_LEAVE_REQUEST` hoặc `REJECT_LEAVE_REQUEST` tùy vào status
+
+### 6.2. Mở Rộng cho Các Module Khác
+
+Để tích hợp task với các module khác, cần:
+
+1. **Thêm TaskType mới** trong enum TaskType (ví dụ: SALARY_APPROVAL, ATTENDANCE_REVIEW)
+2. **Thêm TaskAction mới** trong enum TaskAction (ví dụ: APPROVE_SALARY, REVIEW_ATTENDANCE)
+3. **Tích hợp vào Service của module tương ứng**:
+   - Import `TaskModule` vào module
+   - Inject `TaskService` vào service
+   - Gọi `createTaskByTypeAndAction()` khi cần tạo task
+   - Gọi `completeTaskByRelatedEntity()` khi hoàn thành hành động
+
+## 7. Permissions và Security
+
+### 7.1. Permissions
+
+- **GET /tasks**: EMPLOYEE, MANAGER, ADMIN
+- **GET /tasks/today**: EMPLOYEE, MANAGER, ADMIN
+- **GET /tasks/:id**: EMPLOYEE, MANAGER, ADMIN
+- **POST /tasks**:  MANAGER, ADMIN
+- **PUT /tasks/:id/status**: EMPLOYEE, MANAGER, ADMIN (chỉ có thể cập nhật task của chính mình)
+- **DELETE /tasks/:id**: EMPLOYEE, MANAGER, ADMIN (chỉ có thể xóa task của chính mình)
+
+### 7.3. Workflow Permissions
+
+- **POST /workflows/templates**: MANAGER, ADMIN
+- **GET /workflows/templates**: MANAGER, ADMIN
+- **PUT /workflows/templates/:id**: MANAGER, ADMIN
+- **DELETE /workflows/templates/:id**: MANAGER, ADMIN
+- **POST /workflows/instances**: MANAGER, ADMIN
+- **GET /workflows/instances**: EMPLOYEE, MANAGER, ADMIN (chỉ xem instance của mình hoặc được assign)
+- **DELETE /workflows/instances/:id**: EMPLOYEE, MANAGER, ADMIN (chỉ xóa instance của mình)
